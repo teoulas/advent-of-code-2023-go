@@ -168,11 +168,19 @@ var gearRx = regexp.MustCompile(`\*`)
 func main() {
 	solve(example)
 	solve(input)
-	solve2(example)
 }
 
+type point struct {
+	row, col int
+}
+
+type symbolMap map[point]string
+type adjacencies map[point][]int
+
 func solve(input string) {
-	sum := 0
+	symMap := make(symbolMap)
+	adjNums := make(adjacencies)
+
 	lines := strings.Split(input, "\n")
 	for y, line := range lines {
 		indexes := numRx.FindAllStringIndex(line, -1)
@@ -190,19 +198,35 @@ func solve(input string) {
 			if yDown >= len(lines) { // bottom line
 				yDown = len(lines) - 1
 			}
-			adjLines := lines[yUp : yDown+1]
-			if isAdjacent(left, right, adjLines) {
-				sum += numInt
+			pt, sym := isAdjacentSymbol(left, right, yUp, yDown, lines)
+			if sym != "" {
+				symMap[pt] = sym
+				adjNums[pt] = append(adjNums[pt], numInt)
 			}
 		}
 	}
+	sum := 0
+	gearSum := 0
+	for pt, adj := range adjNums {
+		sum += sumSlice(adj)
+		if sym, ok := symMap[point{pt.row, pt.col}]; ok && sym == "*" && len(adj) == 2 {
+			ratio := adj[0] * adj[1]
+			gearSum += ratio
+		}
+	}
 	fmt.Printf("Sum: %d\n", sum)
+	fmt.Printf("Gear sum: %d\n", gearSum)
 }
 
-func solve2(input string) {
+func sumSlice(nums []int) int {
+	sum := 0
+	for _, num := range nums {
+		sum += num
+	}
+	return sum
 }
 
-func isAdjacent(left, right int, lines []string) bool {
+func isAdjacentSymbol(left, right, top, bottom int, lines []string) (point, string) {
 	l := left - 1
 	if l < 0 {
 		l = 0
@@ -212,12 +236,15 @@ func isAdjacent(left, right int, lines []string) bool {
 		r = len(lines[0])
 	}
 
-	for _, line := range lines {
+	for row := top; row <= bottom; row++ {
+		line := lines[row]
 		subStr := line[l:r]
-		hasSym := symRx.MatchString(subStr)
-		if hasSym {
-			return true
+		indexes := symRx.FindStringIndex(subStr)
+		if len(indexes) == 0 {
+			continue
 		}
+		sym := subStr[indexes[0]:indexes[1]]
+		return point{row, l + indexes[0]}, sym
 	}
-	return false
+	return point{}, ""
 }
