@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -218,9 +219,11 @@ Card 198: 89 99 29 80 68 39 38 10  2 63 | 88  8 92 81 23 54  1 12 45 96 67 86 37
 func main() {
 	solve(example)
 	solve(input)
+	solve2(example)
+	solve2(input)
 }
 
-var cardRx = regexp.MustCompile(`Card (\d+): `)
+var cardRx = regexp.MustCompile(`Card\s+(\d+): `)
 
 func solve(input string) {
 	sum := 0.0
@@ -242,6 +245,43 @@ func solve(input string) {
 		sum += pts
 	}
 	fmt.Printf("sum: %v\n", sum)
+}
+
+func solve2(input string) {
+	origProcessed := 0
+	copies := make(map[int]int) // card -> num copies
+	lines := strings.Split(input, "\n")
+	for _, line := range lines {
+		match := cardRx.FindStringSubmatch(line)
+		cardId := match[1]
+		cardNum, err := strconv.Atoi(cardId)
+		if err != nil {
+			panic(err)
+		}
+		withoutCard := cardRx.ReplaceAllLiteralString(line, "")
+		split := strings.Split(withoutCard, " | ")
+		if len(split) != 2 {
+			panic("bad split")
+		}
+		winning, have := split[0], split[1]
+		winningNums := strings.Fields(winning)
+		haveNums := strings.Fields(have)
+		intersect := intersection(winningNums, haveNums)
+		numMatch := len(intersect)
+		origProcessed++
+		if numMatch == 0 {
+			continue
+		}
+		timesProcessed := copies[cardNum] + 1
+		for i := 1; i <= numMatch; i++ {
+			copies[cardNum+i] += timesProcessed
+		}
+	}
+	numCards := origProcessed
+	for _, numCopies := range copies {
+		numCards += numCopies
+	}
+	fmt.Println("numCards:", numCards)
 }
 
 func intersection(a, b []string) []string {
